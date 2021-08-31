@@ -1,0 +1,92 @@
+openapi: '3.0.2'
+info:
+  title: ''
+  version: ''
+paths:
+  /accounts:
+    x-controller: accounts
+    post:
+      summary: Create account
+      x-operation: createAccount
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Account'
+      responses:
+        201:
+          description: Created account
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Account'
+  /accounts/{accountId}:
+    x-controller: accounts
+    parameters:
+      - $ref: '#/components/parameters/AccountId'
+    get:
+      summary: Get account
+      x-operation: getAccount
+      responses:
+        200:
+          description: Account found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Account'
+        404:
+          description: Account not found
+    delete:
+      summary: Delete account
+      x-operation: deleteAccount
+      responses:
+        204:
+          description: Account deleted
+  /accounts/{accountId}/messages:
+    x-controller: messages
+    parameters:
+      - $ref: '#/components/parameters/AccountId'
+    get:
+      summary: Get messages
+      x-operation: getMessages
+      responses:
+        200:
+          description: Messages retrieved
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: string
+        404:
+          description: Account not found
+    post:
+      summary: Post message
+      x-operation: postMessage
+      requestBody:
+        content:
+          text/plain:
+            schema:
+              type: string
+      responses:
+        201:
+          description: Message posted
+components:
+  parameters:
+    AccountId:
+      name: accountId
+      in: path
+      required: true
+      schema:
+        type: number
+  schemas:
+    Account:
+      type: object
+      required:
+        - name
+      properties:
+        id:
+          type: number
+          readOnly: true
+        name:
+          type: string

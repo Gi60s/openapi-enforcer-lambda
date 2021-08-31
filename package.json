@@ -1,0 +1,35 @@
+{
+  "name": "openapi-enforcer-lambda",
+  "version": "0.0.1",
+  "description": "OpenAPI Enforcer library for simplifying AWS Lambdas that handle HTTP requests.",
+  "main": "dist/index.js",
+  "dependencies": {},
+  "devDependencies": {
+    "@types/aws-lambda": "^8.10.83",
+    "@types/chai": "^4.2.21",
+    "@types/mocha": "^9.0.0",
+    "@types/node": "^16.7.2",
+    "chai": "^4.3.4",
+    "mocha": "^9.1.1",
+    "openapi-enforcer": "^1.15.3",
+    "ts-node": "^10.2.1",
+    "typescript": "^4.3.5"
+  },
+  "peerDependencies": {
+    "openapi-enforcer": "^1.15.3"
+  },
+  "scripts": {
+    "build": "tsc -b tsconfig.json",
+    "test": "mocha dist/test",
+    "test:debug": "mocha --inspect-brk dist/test",
+    "test:dev": "npm run build && npm run test",
+    "test:dev:debug": "npm run build && npm run test:debug"
+  },
+  "keywords": [
+    "openapi-enforcer",
+    "aws",
+    "lambda"
+  ],
+  "author": "James Speirs <james.speirs@gmail.com>",
+  "license": "Apache-2.0"
+}
