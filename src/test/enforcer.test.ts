@@ -83,9 +83,22 @@ describe('enforcer-lambda', () => {
 
     })
 
-    // describe('router', () => {
-    //
-    // })
+    describe('router', () => {
+        it('it will run route if request is valid', async () => {
+            let count = 0
+            const h = route(oasPath, options, {
+                accounts: {
+                    getAccount: async (req, res) => {
+                        count++
+                        res.status(200).send({ id: 123, name: 'Name' })
+                    }
+                }
+            })
+            const result = await h(event('get', '/accounts/123'))
+            expect(count).to.equal(1)
+            expect(result.statusCode).to.equal(200)
+        })
+    })
 })
 
 function event (method: string, path: string, data?: Partial<LambdaEvent>): LambdaEvent {
