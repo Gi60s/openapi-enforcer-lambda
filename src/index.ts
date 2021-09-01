@@ -49,6 +49,7 @@ export interface Request {
     body: string | object
     cookie: Record<string, any>
     headers: Record<string, any>
+    method: string
     operation: any
     params: Record<string, any>
     path: string
@@ -114,7 +115,7 @@ export default function enforcerLambda (openapi: string | unknown, options: Opti
             return async function (event: LambdaEvent) {
                 try {
                     const { req, res, result } = await initialize(event, openapi, options)
-                    const { method, path, operation } = req.operation
+                    const { method, path, operation } = req
 
                     // get the x-controller and x-operation for the operation
                     const registered: OperationsMapData = operationsMap.get(operation) ?? { xOperation: '', xController: '', processed: false }
@@ -138,7 +139,7 @@ export default function enforcerLambda (openapi: string | unknown, options: Opti
                             options!.xOperation + '" (or operationId) and "' + options!.xController + '" properties.')
                     } else if (controllers[registered.xController] === undefined) {
                         throw new EnforcerRouterError('CONTROLLER_NOT_FOUND', 'The mapped controller could not be found for the "' + registered.xController + '" controller.')
-                    } else if (controllers[registered.xOperation] === undefined) {
+                    } else if (controllers[registered.xController][registered.xOperation] === undefined) {
                         throw new EnforcerRouterError('CONTROLLER_NOT_FOUND', 'The mapped controller could not be found for the "' + registered.xOperation + '" operation.')
                     } else {
                         await controllers[registered.xController][registered.xOperation](req, res)
