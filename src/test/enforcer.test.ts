@@ -1,6 +1,7 @@
 import { expect } from 'chai'
 import { default as enforcer, handler, route, LambdaEvent, Options } from '../index'
 import path from 'path'
+import exp from "constants";
 
 const oasPath = path.resolve(__dirname, '../../resources/openapi.yml')
 const options = { logErrors: false, enforcerOptions: { hideWarnings: true } }
@@ -97,6 +98,88 @@ describe('enforcer-lambda', () => {
             const result = await h(event('get', '/accounts/123'))
             expect(count).to.equal(1)
             expect(result.statusCode).to.equal(200)
+        })
+
+        it('will return a 404 for an invalid path', async () => {
+            let count = 0
+            const h = route(oasPath, options, {
+                accounts: {
+                    getAccount: async (req, res) => {
+                        count++
+                        res.status(200).send({id: 123, name: 'Name'})
+                    }
+                }
+            })
+            const result = await h(event('get', '/messages/123'))
+            expect(count).to.equal(0)
+            expect(result.statusCode).to.equal(404)
+        })
+
+        it('return a 400 for invalid input parameters', async () => {
+            let count = 0
+            const h = route(oasPath, options, {
+                accounts: {
+                    getAccount: async(req, res) => {
+                        count++
+                        res.status(200).send({id: 123, name: 'Name'})
+                    }
+                }
+            })
+            const result = await h(event('get', '/accounts/abc'))
+            expect(count).to.equal(0)
+            expect(result.statusCode).to.equal(400)
+        })
+
+        it('undefined query parameters not allowed', async () => {
+            let count = 0
+            const h = route(oasPath, options, {
+                accounts: {
+                    getAccount: async(req, res) => {
+                        count++
+                        res.status(200).send({id: 123, name: 'Name'})
+                    }
+                }
+            })
+            const result = await h(event('get', 'accounts/123?foo=bar'))
+            expect(count).to.equal(0)
+            expect(result.statusCode).to.equal(400)
+        })
+
+        it('undefined query parameters allowed', async () => {
+            let count = 0
+            const options: Options = {
+                allowOtherQueryParameters: true,
+                logErrors: false,
+                enforcerOptions: {
+                    hideWarnings: true
+                }
+            }
+            const h = route(oasPath, options, {
+                accounts: {
+                    getAccount: async(req, res) => {
+                        count++
+                        res.status(200).send({id: 123, name: 'Name'})
+                    }
+                }
+            })
+            const result = await h(event('get', 'accounts/123?foo=bar'))
+            expect(count).to.equal(1)
+            expect(result.statusCode).to.equal(200)
+        })
+
+        it('will require a response to be valid', async () => {
+            let count = 0
+            const h = route(oasPath, options, {
+                accounts: {
+                    getAccount: async(req, res) => {
+                        count++
+                        res.status(200).send({id: 123})
+                    }
+                }
+            })
+            const result = await h(event('get', 'accounts/123'))
+            expect(count).to.equal(1)
+            expect(result.statusCode).to.equal(500)
         })
     })
 })
