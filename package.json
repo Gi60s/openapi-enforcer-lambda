@@ -3,7 +3,9 @@
   "version": "0.0.1",
   "description": "OpenAPI Enforcer library for simplifying AWS Lambdas that handle HTTP requests.",
   "main": "dist/index.js",
-  "dependencies": {},
+  "dependencies": {
+    "coverage": "^0.4.1"
+  },
   "devDependencies": {
     "@types/aws-lambda": "^8.10.83",
     "@types/chai": "^4.2.21",

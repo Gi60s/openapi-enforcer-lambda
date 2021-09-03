@@ -1,0 +1,103 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+    paths-ignore:
+      - .gitignore
+      - LICENSE
+      - README.md
+      - .github/dependabot.yml
+      - .github/workflows/deploy.yml
+      - .github/workflows/bump.yml
+
+env:
+  node_version: "14.x"
+
+jobs:
+  test:
+    name: Test Module
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node-version: [10.x, 12.x, 14.x]
+      fail-fast: false
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Set up Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v2
+        with:
+          node-version: ${{ matrix.node-version }}
+
+      - name: npm install
+        run: npm install
+
+      - name: npm test
+        if: ${{ matrix.node-version != env.node_version }} # just run the tests if not node 14
+        run: npm run test
+
+      - name: npm test with coverage
+        if: ${{ matrix.node-version == env.node_version }} # only upload coverage from node 14
+        run: npm run coverage
+
+      - name: Upload coverage to Codecov
+        if: ${{ matrix.node-version == env.node_version }} # only upload coverage from node 14
+        uses: codecov/codecov-action@v2
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          fail_ci_if_error: true
+
+  audit:
+    name: Audit Module
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v2
+        with:
+          node-version: ${{ env.node_version }}
+
+      - name: npm audit
+        run: npm audit --audit-level=critical
+
+  lint:
+    name: Lint Module
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v2
+        with:
+          node-version: ${{ env.node_version }}
+
+      - name: npm install
+        run: npm install
+
+      - name: npm lint
+        run: npm run lint
+
+  # https://github.com/marketplace/actions/release-drafter
+  draft_release:
+    name: Draft Release
+    runs-on: ubuntu-latest
+    needs: [test, audit, lint]
+    steps:
+      - uses: actions/checkout@v2
+
+      - id: version
+        run: echo ::set-output name=version::$(node -p 'require("./package.json").version')
+
+      - name: Draft release
+        id: draft
+        uses: release-drafter/release-drafter@v5
+        with:
+          version: ${{ steps.version.outputs.version }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Link to Release
+        run: |
+          echo "Release Draft create/updated: ${{ steps.draft.outputs.html_url }}"
