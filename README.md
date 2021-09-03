@@ -42,12 +42,12 @@ persons: {
 Complete [examples](#examples) with the handler and the router are provided below.
 
 ### Handler
-`handler (openapi: string | unknown, options: Options, handler: Handler): LambdaHandler`
+`handler (openapi: string | unknown, options: Options = {}, handler: Handler): LambdaHandler`
 
 This function provides the same functionality as the EnforcerLambda function, but it only returns a handler.
 
 ### Router
-`route (openapi: string | unknown, options: Options, controllers: RouteControllerMap): LambdaHandler`
+`route (openapi: string | unknown, options: Options = {}, controllers: RouteControllerMap): LambdaHandler`
 
 This function also provides the same functionality as the EnforcerLambda function, but it only returns a handler.
 
