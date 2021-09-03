@@ -7,6 +7,65 @@ This library has a peer dependency on the `openapi-enforcer` package.
 npm install openapi-enforcer-lambda openapi-enforcer
 ```
 
+## Documentation
+### Enforcer Lambda
+
+`enforcerLambda (openapi: string | unknown, options: Options = {}): { handler: (handler: Handler) => LambdaHandler, route: (controllers: RouteControllerMap) => LambdaHandler }`
+
+This function takes your OpenAPI document and an optional set of options and returns a promise object with a 
+handler and a router. The handler will use the event that triggered your lambda, your OpenAPI document, and
+your options to generate req and res objects to be used by your lambda to respond to API calls. The router will
+take those same objects and you will need to pass in a RouteControllerMap object. With those, the router will route
+all incoming API calls appropriately and send correctly formatted responses as specified in your OpenAPI document.
+
+The RouteControllerMap object takes a controller and its corresponding operation. For example, if I have a 
+controller `persons` and two corresponding operations, getPersonById and findPersonByName, outlined in my OpenAPI
+document, I would pass in the following:
+
+```js
+persons: {
+  getPersonById: async (req, res) => {
+  	const {id} = req.path // get path parameter named "id"
+    // ... talk to database
+    res.status(200).send(foundPersonObject)
+  },
+  findPersonByName: async (req, res) => {
+  	const {id} = req.path // get path parameter named "id"
+    // ... talk to database
+    res.status(200).send(foundPersonObject)
+  }
+}
+```
+Complete examples with the handler and the router are provided below.
+
+### Handler
+`handler (openapi: string | unknown, options: Options, handler: Handler): LambdaHandler`
+
+This function provides the same functionality as the EnforcerLambda function, but it only returns a handler. Also,
+note that the options parameter is required for this function.
+
+### Router
+`route (openapi: string | unknown, options: Options, controllers: RouteControllerMap): LambdaHandler`
+
+This function also provides the same functionality as the EnforcerLambda function, but it only returns a handler.
+Also, note that the options parameter is required for this function as well.
+
+### Options
+
+Property | Description | Type | Default
+---------|-------------|------|--------
+allowOtherQueryParameters | Query parameters not specified in the OpenAPI document are permitted. | `boolean \ string[]` | false
+enforcerOptions | Other options permitted by the [OpenAPI enforcer](https://www.npmjs.com/package/openapi-enforcer) | `Record<string, any>` | null
+handleBadRequest | Bad requests will be handled by the enforcer. | `boolean` | true
+handleBadResponse | Bad responses will be handled by the enforcer. | `boolean` | true
+handleNotFound | Requests that need to return a status 404 will be handled by the enforcer. | `boolean` | true
+handleMethodNotAllowed | Requests that are not allowed will be handled by the enforcer. | `boolean` | true
+logErrors | Log errors to the console. | `boolean` | true
+xController | How controllers are indicated in the provided OpenAPI document. | `string` | `x-controller`
+xOperation | How operations are indicated in the provided OpenAPI document. | `string` | `x-operation`
+
+
+
 ## Examples
 
 **Simple Handler**

@@ -83,7 +83,7 @@ export interface RouteControllerMap {
 }
 
 export default function enforcerLambda (openapi: string | unknown, options: Options = {}): { handler: (handler: Handler) => LambdaHandler, route: (controllers: RouteControllerMap) => LambdaHandler } {
-    // if (options.allowOtherQueryParameters === undefined) options.allowOtherQueryParameters = false
+    if (options.allowOtherQueryParameters === undefined) options.allowOtherQueryParameters = false
     if (options.handleBadRequest === undefined) options.handleBadRequest = true
     if (options.handleBadResponse === undefined) options.handleBadResponse = true
     if (options.handleNotFound === undefined) options.handleNotFound = true
