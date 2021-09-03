@@ -25,7 +25,8 @@
     "test": "mocha dist/test",
     "test:debug": "mocha --inspect-brk dist/test",
     "test:dev": "npm run build && npm run test",
-    "test:dev:debug": "npm run build && npm run test:debug"
+    "test:dev:debug": "npm run build && npm run test:debug",
+    "lint": "eslint.js"
   },
   "keywords": [
     "openapi-enforcer",
