@@ -179,12 +179,12 @@ export class EnforcerStatusError extends Error {
     }
 }
 
-export function handler (openapi: string | unknown, options: Options, handler: Handler): LambdaHandler {
+export function handler (openapi: string | unknown, options: Options = {}, handler: Handler): LambdaHandler {
     const e = enforcerLambda(openapi, options)
     return e.handler(handler)
 }
 
-export function route (openapi: string | unknown, options: Options, controllers: RouteControllerMap): LambdaHandler {
+export function route (openapi: string | unknown, options: Options = {}, controllers: RouteControllerMap): LambdaHandler {
     const e = enforcerLambda(openapi, options)
     return e.route(controllers)
 }
