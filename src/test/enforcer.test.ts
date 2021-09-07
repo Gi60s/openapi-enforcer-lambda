@@ -1,7 +1,6 @@
 import { expect } from 'chai'
-import { default as enforcer, handler, route, LambdaEvent, Options } from '../index'
+import { handler, route, LambdaEvent, Options } from '../index'
 import path from 'path'
-import exp from "constants";
 
 const oasPath = path.resolve(__dirname, '../../resources/openapi.yml')
 const options = { logErrors: false, enforcerOptions: { hideWarnings: true } }
