@@ -15,7 +15,9 @@
     "mocha": "^9.1.1",
     "openapi-enforcer": "^1.15.3",
     "ts-node": "^10.2.1",
-    "typescript": "^4.3.5"
+    "typescript": "^4.3.5",
+    "ts-jest": "^27.0.5",
+    "ts-standard": "^10.0.0"
   },
   "peerDependencies": {
     "openapi-enforcer": "^1.15.3"
@@ -26,7 +28,9 @@
     "test:debug": "mocha --inspect-brk dist/test",
     "test:dev": "npm run build && npm run test",
     "test:dev:debug": "npm run build && npm run test:debug",
-    "lint": "eslint.js"
+    "lint": "ts-standard",
+    "lint:fix": "ts-standard --fix",
+    "coverage": "npm run test -- --coverage || exit 0"
   },
   "keywords": [
     "openapi-enforcer",
