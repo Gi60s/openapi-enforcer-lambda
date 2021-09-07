@@ -2,7 +2,7 @@
   "name": "openapi-enforcer-lambda",
   "version": "0.0.1",
   "description": "OpenAPI Enforcer library for simplifying AWS Lambdas that handle HTTP requests.",
-  "main": "src/index.ts",
+  "main": "dist/src/index.ts",
   "dependencies": {
     "coverage": "^0.4.1"
   },
@@ -13,6 +13,7 @@
     "@types/node": "^16.7.2",
     "chai": "^4.3.4",
     "mocha": "^9.1.1",
+    "nyc": "^15.1.0",
     "openapi-enforcer": "^1.15.3",
     "ts-jest": "^27.0.5",
     "ts-node": "^10.2.1",
@@ -24,13 +25,10 @@
   },
   "scripts": {
     "build": "tsc -b tsconfig.json",
-    "test": "set TS_NODE_COMPILER_OPTIONS='{\"module\": \"commonjs\" }' mocha src/test/enforcer.test.ts",
-    "test:debug": "mocha --inspect-brk src/test/enforcer.test.ts",
-    "test:dev": "npm run build && npm run test",
-    "test:dev:debug": "npm run build && npm run test:debug",
+    "test": "set TS_NODE_COMPILER_OPTIONS='{\"module\": \"commonjs\" }' nyc mocha -r ts-node/register './test/*'",
     "lint": "ts-standard",
     "lint:fix": "ts-standard --fix",
-    "coverage": "npm run test -- --coverage || exit 0"
+    "coverage": "nyc report --reporter-json"
   },
   "keywords": [
     "openapi-enforcer",
