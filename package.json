@@ -31,7 +31,7 @@
   },
   "scripts": {
     "build": "tsc -b tsconfig.json",
-    "test": "mocha 'dist/test/*.js'",
+    "test": "nyc mocha 'dist/test/*.js'",
     "lint": "ts-standard",
     "lint:fix": "ts-standard --fix",
     "coverage": "nyc report --reporter-json"
