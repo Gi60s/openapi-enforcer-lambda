@@ -53,7 +53,13 @@ jobs:
 
       - name: npm test
         run: |
-          npm run test
+          npm run coverage
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v2
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          fail_ci_if_error: true
 
   audit:
     name: Audit Module
@@ -83,11 +89,15 @@ jobs:
       - name: npm install
         run: npm install
 
+      - name: npm lint
+        run: npm run lint
+
   publish:
     needs: [env, test, audit, lint] # Wait for checks to finish before publishing
     name: Publish node package
     runs-on: ubuntu-latest
     strategy:
+      max-parallel: 1
       matrix: ${{ fromJson(needs.env.outputs.matrix) }}
     steps:
       - name: Checkout

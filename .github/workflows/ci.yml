@@ -33,6 +33,9 @@ jobs:
       - name: npm install
         run: npm install
 
+      - name: npm run build
+        run: npm run build
+
       - name: npm test
         if: ${{ matrix.node-version != env.node_version }} # just run the tests if not node 14
         run: npm run test
@@ -40,6 +43,13 @@ jobs:
       - name: npm test with coverage
         if: ${{ matrix.node-version == env.node_version }} # only upload coverage from node 14
         run: npm run coverage
+
+      - name: Upload coverage to Codecov
+        if: ${{ matrix.node-version == env.node_version }} # only upload coverage from node 14
+        uses: codecov/codecov-action@v2
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          fail_ci_if_error: true
 
   audit:
     name: Audit Module
@@ -68,6 +78,9 @@ jobs:
 
       - name: npm install
         run: npm install
+
+      - name: npm lint
+        run: npm run lint
 
   # https://github.com/marketplace/actions/release-drafter
   draft_release:
