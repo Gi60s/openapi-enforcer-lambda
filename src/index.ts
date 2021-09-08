@@ -123,20 +123,22 @@ export default function enforcerLambda (openapi: string | unknown, options: Opti
             operationsMap.set(operation, registered)
             registered.xOperation = operation[options?.xOperation as string] ?? operation.operationId ?? ''
             let node = operation
-            while (node) {
+            while (node !== null) {
               const xController = options?.xController as string
               if (xController in node) {
                 registered.xController = node[xController]
                 break
               }
-              node = node.enforcerData && node.enforcerData.parent ? node.enforcerData.parent.result : null
+              node = node.enforcerData.parent.result ?? null
             }
           }
 
           if (registered.xController === '' || registered.xOperation === '') {
+            const xOperation: string = options?.xOperation ?? ''
+            const xController: string = options?.xController ?? ''
             throw new EnforcerRouterError('NO_ROUTE_MAPPING', 'The OpenAPI document defines the "' + method.toUpperCase() + ' ' + path +
               '" endpoint, but the endpoint has no route mapping. Ensure that the OpenAPI document defines both the "' +
-              options!.xOperation + '" (or operationId) and "' + options!.xController + '" properties.')
+              xOperation + '" (or operationId) and "' + xController + '" properties.')
           } else if (controllers[registered.xController] === undefined) {
             throw new EnforcerRouterError('CONTROLLER_NOT_FOUND', 'The mapped controller could not be found for the "' + registered.xController + '" controller.')
           } else if (controllers[registered.xController][registered.xOperation] === undefined) {
@@ -161,7 +163,7 @@ export class EnforcerRouterError extends Error {
     this.code = code
   }
 
-  toString () {
+  toString (): string {
     return 'RouteError ' + this.code + ': ' + this.message
   }
 }
@@ -174,8 +176,8 @@ export class EnforcerStatusError extends Error {
     this.code = code
   }
 
-  toString () {
-    return 'StatusError ' + this.code + ': ' + this.message
+  toString (): string {
+    return `StatusError ${this.code}: ${this.message}`
   }
 }
 
@@ -204,7 +206,7 @@ async function initialize (event: LambdaEvent, openapi: Promise<any> | any, opti
   if (event.queryStringParameters !== null) {
     const qsParams = event.queryStringParameters
     Object.keys(qsParams).forEach(key => {
-      qsMap[key] = [qsParams[key] ?? '' ]
+      qsMap[key] = [qsParams[key] ?? '']
       hasQs = true
     })
   }
@@ -238,7 +240,7 @@ async function initialize (event: LambdaEvent, openapi: Promise<any> | any, opti
     headers: event.headers,
     ...(event.body !== null ? { body: event.body } : {})
   }, requestOptions)
-  if (error) throw new EnforcerStatusError(error.statusCode, error.toString())
+  if (error !== undefined) throw new EnforcerStatusError(error.statusCode, error.toString())
 
   return {
     req,
@@ -247,11 +249,12 @@ async function initialize (event: LambdaEvent, openapi: Promise<any> | any, opti
         if (options === undefined) options = {}
         const encode = options.encode ?? encodeURIComponent
         if (result.multiValueHeaders['set-cookie'] === undefined) result.multiValueHeaders['set-cookie'] = []
+        const valueString: string = encode(typeof value === 'string' ? value : JSON.stringify(value))
         result.multiValueHeaders['set-cookie'].push(
-          name + ':' + encode(typeof value === 'string' ? value : JSON.stringify(value)) +
+          name + ':' + valueString +
           '; path=' + (options.path !== undefined ? options.path : '/') +
           (options.domain !== undefined ? '; domain=' + options.domain : '') +
-          (options.maxAge !== undefined ? '; max-age=' + Math.round(options.maxAge / 1000) : '') +
+          (options.maxAge !== undefined ? `; max-age=${Math.round(options.maxAge / 1000)}` : '') +
           (options.expires !== undefined ? '; expires=' + options.expires.toUTCString() : '') +
           (options.secure === true ? '; secure' : '') +
           (options.sameSite !== undefined ? '; samesite=' + options.sameSite : '')
@@ -276,7 +279,7 @@ async function initialize (event: LambdaEvent, openapi: Promise<any> | any, opti
         return this
       },
       set (header: string, value: string | number | boolean): Response {
-        result.headers![header] = value
+        result.headers[header] = value
         return this
       },
       status (code: number): Response {
@@ -288,13 +291,13 @@ async function initialize (event: LambdaEvent, openapi: Promise<any> | any, opti
   }
 }
 
-function sendErrorResponse (e: Error, options: Options): LambdaResult {
-  if (options.logErrors) console.log(e?.stack ?? e)
+function sendErrorResponse (e: Error, options?: Options): LambdaResult {
+  if (options?.logErrors ?? true) console.log(e?.stack ?? e)
   if (e instanceof EnforcerStatusError) {
     return {
       statusCode: e.code,
       headers: {
-        'content': 'text/plain'
+        content: 'text/plain'
       },
       isBase64Encoded: false,
       multiValueHeaders: {},
@@ -304,7 +307,7 @@ function sendErrorResponse (e: Error, options: Options): LambdaResult {
     return {
       statusCode: 500,
       headers: {
-        'content': 'text/plain'
+        content: 'text/plain'
       },
       isBase64Encoded: false,
       multiValueHeaders: {},
@@ -313,17 +316,19 @@ function sendErrorResponse (e: Error, options: Options): LambdaResult {
   }
 }
 
-function sendValidResponse(responseProcessor: (code: number, body?: string | object | undefined, headers?: Record<string, string | boolean | number>) => any, result: ResponseResult): LambdaResult {
+function sendValidResponse (responseProcessor: (code: number, body?: string | object | undefined, headers?: Record<string, string | boolean | number>) => any, result: ResponseResult): LambdaResult {
   const [response, error] = responseProcessor(result.statusCode, result.body, result.headers)
-  if (error) {
-    throw new EnforcerStatusError(500, 'Invalid response: ' + error.toString())
+  if (error !== undefined) {
+    const message: string = error.toString() ?? ''
+    throw new EnforcerStatusError(500, `Invalid response: ${message}`)
   } else {
     return {
       statusCode: result.statusCode,
       headers: response.headers,
       isBase64Encoded: false,
       multiValueHeaders: result.multiValueHeaders,
-      body: result.body === undefined ? ''
+      body: result.body === undefined
+        ? ''
         : typeof result.body === 'object' ? JSON.stringify(result.body) : result.body
     }
   }
