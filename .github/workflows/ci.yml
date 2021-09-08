@@ -44,13 +44,6 @@ jobs:
         if: ${{ matrix.node-version == env.node_version }} # only upload coverage from node 14
         run: npm run coverage
 
-      - name: Upload coverage to Codecov
-        if: ${{ matrix.node-version == env.node_version }} # only upload coverage from node 14
-        uses: codecov/codecov-action@v2
-        with:
-          token: ${{ secrets.CODECOV_TOKEN }}
-          fail_ci_if_error: true
-
   audit:
     name: Audit Module
     runs-on: ubuntu-latest
