@@ -9,10 +9,10 @@ describe('enforcer-lambda', () => {
   describe('handler', () => {
     it('it will run handler if request is valid', async () => {
       let count = 0
-      const h = handler(oasPath, options, async (req, res) => {
+      const h = handler(oasPath, async (req, res) => {
         count++
         res.status(200).send({ id: 123, name: 'Name' })
-      })
+      }, options)
       const result = await h(event('get', '/accounts/123'))
       expect(count).to.equal(1)
       expect(result.statusCode).to.equal(200)
@@ -20,10 +20,10 @@ describe('enforcer-lambda', () => {
 
     it('return a 404 for invalid path', async () => {
       let count = 0
-      const h = handler(oasPath, options, async (req, res) => {
+      const h = handler(oasPath, async (req, res) => {
         count++
         res.status(200).send({ id: 123, name: 'Name' })
-      })
+      }, options)
       const result = await h(event('get', '/foo'))
       expect(count).to.equal(0)
       expect(result.statusCode).to.equal(404)
@@ -31,10 +31,10 @@ describe('enforcer-lambda', () => {
 
     it('return a 400 for invalid input parameters', async () => {
       let count = 0
-      const h = handler(oasPath, options, async (req, res) => {
+      const h = handler(oasPath, async (req, res) => {
         count++
         res.status(200).send({ id: 123, name: 'Name' })
-      })
+      }, options)
       const result = await h(event('get', '/accounts/abc'))
       expect(count).to.equal(0)
       expect(result.statusCode).to.equal(400)
@@ -42,10 +42,10 @@ describe('enforcer-lambda', () => {
 
     it('will not allow undefined query parameters by default', async () => {
       let count = 0
-      const h = handler(oasPath, options, async (req, res) => {
+      const h = handler(oasPath, async (req, res) => {
         count++
         res.status(200).send({ id: 123, name: 'Name' })
-      })
+      }, options)
       const result = await h(event('get', '/accounts/123?foo=bar'))
       expect(count).to.equal(0)
       expect(result.statusCode).to.equal(400)
@@ -60,10 +60,10 @@ describe('enforcer-lambda', () => {
           hideWarnings: true
         }
       }
-      const h = handler(oasPath, options, async (req, res) => {
+      const h = handler(oasPath, async (req, res) => {
         count++
         res.status(200).send({ id: 123, name: 'Name' })
-      })
+      }, options)
       const result = await h(event('get', '/accounts/123?foo=bar'))
       expect(count).to.equal(1)
       expect(result.statusCode).to.equal(200)
@@ -71,10 +71,10 @@ describe('enforcer-lambda', () => {
 
     it('will require a response to be valid', async () => {
       let count = 0
-      const h = handler(oasPath, options, async (req, res) => {
+      const h = handler(oasPath, async (req, res) => {
         count++
         res.status(200).send({ id: 'abc' })
-      })
+      }, options)
       const result = await h(event('get', '/accounts/123'))
       expect(count).to.equal(1)
       expect(result.statusCode).to.equal(500)
@@ -84,14 +84,14 @@ describe('enforcer-lambda', () => {
   describe('router', () => {
     it('it will run route if request is valid', async () => {
       let count = 0
-      const h = route(oasPath, options, {
+      const h = route(oasPath, {
         accounts: {
           getAccount: async (req, res) => {
             count++
             res.status(200).send({ id: 123, name: 'Name' })
           }
         }
-      })
+      }, options)
       const result = await h(event('get', '/accounts/123'))
       expect(count).to.equal(1)
       expect(result.statusCode).to.equal(200)
@@ -99,14 +99,14 @@ describe('enforcer-lambda', () => {
 
     it('will return a 404 for an invalid path', async () => {
       let count = 0
-      const h = route(oasPath, options, {
+      const h = route(oasPath, {
         accounts: {
           getAccount: async (req, res) => {
             count++
             res.status(200).send({ id: 123, name: 'Name' })
           }
         }
-      })
+      }, options)
       const result = await h(event('get', '/messages/123'))
       expect(count).to.equal(0)
       expect(result.statusCode).to.equal(404)
@@ -114,14 +114,14 @@ describe('enforcer-lambda', () => {
 
     it('return a 400 for invalid input parameters', async () => {
       let count = 0
-      const h = route(oasPath, options, {
+      const h = route(oasPath, {
         accounts: {
           getAccount: async (req, res) => {
             count++
             res.status(200).send({ id: 123, name: 'Name' })
           }
         }
-      })
+      }, options)
       const result = await h(event('get', '/accounts/abc'))
       expect(count).to.equal(0)
       expect(result.statusCode).to.equal(400)
@@ -129,14 +129,14 @@ describe('enforcer-lambda', () => {
 
     it('undefined query parameters not allowed', async () => {
       let count = 0
-      const h = route(oasPath, options, {
+      const h = route(oasPath, {
         accounts: {
           getAccount: async (req, res) => {
             count++
             res.status(200).send({ id: 123, name: 'Name' })
           }
         }
-      })
+      }, options)
       const result = await h(event('get', 'accounts/123?foo=bar'))
       expect(count).to.equal(0)
       expect(result.statusCode).to.equal(400)
@@ -151,14 +151,14 @@ describe('enforcer-lambda', () => {
           hideWarnings: true
         }
       }
-      const h = route(oasPath, options, {
+      const h = route(oasPath, {
         accounts: {
           getAccount: async (req, res) => {
             count++
             res.status(200).send({ id: 123, name: 'Name' })
           }
         }
-      })
+      }, options)
       const result = await h(event('get', 'accounts/123?foo=bar'))
       expect(count).to.equal(1)
       expect(result.statusCode).to.equal(200)
@@ -166,14 +166,14 @@ describe('enforcer-lambda', () => {
 
     it('will require a response to be valid', async () => {
       let count = 0
-      const h = route(oasPath, options, {
+      const h = route(oasPath, {
         accounts: {
           getAccount: async (req, res) => {
             count++
             res.status(200).send({ id: 123 })
           }
         }
-      })
+      }, options)
       const result = await h(event('get', 'accounts/123'))
       expect(count).to.equal(1)
       expect(result.statusCode).to.equal(500)
