@@ -114,9 +114,7 @@ jobs:
           NODE_AUTH_TOKEN: ${{ secrets[matrix.registry.token] }}
 
       - name: npm run build
-          run: npm run build
-          env:
-            NODE_AUTH_TOKEN: ${{ secrets[matrix.registry.token] }}
+        run: npm run build
 
         # The prepublishOnly script builds the package before publishing
       - name: Publish
