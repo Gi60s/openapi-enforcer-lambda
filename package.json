@@ -1,8 +1,8 @@
 {
   "name": "openapi-enforcer-lambda",
-  "version": "0.0.6",
+  "version": "0.0.7",
   "description": "OpenAPI Enforcer library for simplifying AWS Lambdas that handle HTTP requests.",
-  "main": "dist/app/index.js",
+  "main": "index.ts",
   "dependencies": {
     "coverage": "^0.4.1"
   },
