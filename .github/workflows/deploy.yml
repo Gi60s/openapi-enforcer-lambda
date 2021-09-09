@@ -51,6 +51,9 @@ jobs:
       - name: npm install
         run: npm install
 
+      - name: npm run build
+          run: npm run build
+
       - name: npm test
         run: |
           npm run coverage
@@ -112,6 +115,9 @@ jobs:
         run: npm install
         env:
           NODE_AUTH_TOKEN: ${{ secrets[matrix.registry.token] }}
+
+      - name: npm run build
+          run: npm run build
 
         # The prepublishOnly script builds the package before publishing
       - name: Publish
