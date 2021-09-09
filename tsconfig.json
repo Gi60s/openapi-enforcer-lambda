@@ -18,8 +18,7 @@
   },
 
   "include": [
-    "src/app",
-    "dist/app"
+    "src"
   ],
 
   "exclude": [
