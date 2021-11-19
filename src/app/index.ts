@@ -19,7 +19,7 @@ export interface CookieOptions {
   sameSite?: 'lax' | 'strict' | 'none'
 }
 
-export type Handler = (req: unknown, res: Response) => Promise<void>
+export type Handler = (req: Request, res: Response) => Promise<void>
 
 export type LambdaEvent = APIGatewayProxyEvent
 
