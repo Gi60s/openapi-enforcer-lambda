@@ -1,6 +1,7 @@
 import { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda'
 import path from 'path'
 import { Enforcer } from 'openapi-enforcer'
+import querystring from 'querystring'
 
 process.on('unhandledRejection', (e) => {
   console.log(e)
@@ -20,6 +21,8 @@ export interface CookieOptions {
 }
 
 export type Handler = (req: Request, res: Response) => Promise<void>
+
+type Headers = MergedParameters
 
 export type LambdaEvent = APIGatewayProxyEvent
 
@@ -44,6 +47,8 @@ export interface Options {
   xController?: string
   xOperation?: string
 }
+
+type MergedParameters = Record<string, string | number | boolean | Array<string | number | boolean> | undefined>
 
 export interface Request {
   body: string | object
@@ -80,6 +85,19 @@ export interface RouteControllerMap {
   [controller: string]: {
     [operation: string]: (req: Request, res: Response) => Promise<void>
   }
+}
+
+export interface TestRequest {
+  method?: string
+  path: string
+  headers?: Headers
+  body?: string | object
+}
+
+export interface TestResponse {
+  body: string | object
+  headers: Headers
+  statusCode: number
 }
 
 export default function enforcerLambda (openapi: string | unknown, options: Options = {}): { handler: (handler: Handler) => LambdaHandler, route: (controllers: RouteControllerMap) => LambdaHandler } {
@@ -191,6 +209,79 @@ export function route (openapi: string | unknown, controllers: RouteControllerMa
   return e.route(controllers)
 }
 
+export async function test (handler: LambdaHandler, req: TestRequest): Promise<TestResponse> {
+  const [ path, qs ] = req.path.split('?')
+  const body: string | null = req.body !== null && typeof req.body === 'object' ? JSON.stringify(req.body) : req.body ?? null
+  const method = req.method?.toUpperCase() ?? 'GET'
+  const [ headers, multiValueHeaders ] = splitMultiValueParameters(req.headers)
+  const [ queryStringParameters, multiValueQueryStringParameters ] = splitMultiValueParameters(qs !== undefined ? querystring.parse(qs) : {})
+
+  const event: LambdaEvent = {
+    body,
+    headers,
+    httpMethod: method,
+    isBase64Encoded: false,
+    multiValueHeaders,
+    multiValueQueryStringParameters,
+    path,
+    pathParameters: null,
+    queryStringParameters,
+    requestContext: {
+      accountId: '',
+      apiId: '',
+      authorizer: {},
+      identity: {
+        accessKey: null,
+        accountId: null,
+        apiKey: null,
+        apiKeyId: null,
+        caller: null,
+        clientCert: null,
+        cognitoAuthenticationProvider: null,
+        cognitoAuthenticationType: null,
+        cognitoIdentityId: null,
+        cognitoIdentityPoolId: null,
+        principalOrgId: null,
+        sourceIp: '',
+        user: null,
+        userAgent: null,
+        userArn: null
+      },
+      protocol: 'https',
+      httpMethod: method,
+      path,
+      stage: '',
+      requestId: '',
+      requestTimeEpoch: Date.now(),
+      resourceId: '',
+      resourcePath: ''
+    },
+    resource: '',
+    stageVariables: null
+  }
+  const res = await handler(event)
+
+  const resHeaders = mergeMultiValueParameters(res.headers, res.multiValueHeaders)
+  const resBody = (() => {
+    try {
+      return JSON.parse(res.body)
+    } catch (e) {
+      return res.body ?? null
+    }
+  })()
+  return {
+    body: resBody,
+    headers: resHeaders,
+    statusCode: res.statusCode
+  }
+}
+
+export function testSuite (handler: LambdaHandler): (req: TestRequest) => Promise<TestResponse> {
+  return function (req: TestRequest): Promise<TestResponse> {
+    return test(handler, req)
+  }
+}
+
 async function initialize (event: LambdaEvent, openapi: Promise<any> | any, options: Options): Promise<{ req: Request, res: Response, result: ResponseResult }> {
   if (openapi instanceof Promise) {
     try {
@@ -291,6 +382,21 @@ async function initialize (event: LambdaEvent, openapi: Promise<any> | any, opti
   }
 }
 
+function mergeMultiValueParameters (singles: Record<string, string | number | boolean> | undefined, multis: Record<string, Array<string | number | boolean>> | undefined): MergedParameters {
+  const merged: MergedParameters = {}
+  if (singles !== undefined) {
+    Object.keys(singles).forEach(key => {
+      merged[key] = singles[key]
+    })
+  }
+  if (multis !== undefined) {
+    Object.keys(multis).forEach(key => {
+      merged[key] = multis[key]
+    })
+  }
+  return merged
+}
+
 function sendErrorResponse (e: Error, options?: Options): LambdaResult {
   if (options?.logErrors ?? true) console.log(e?.stack ?? e)
   if (e instanceof EnforcerStatusError) {
@@ -332,4 +438,18 @@ function sendValidResponse (responseProcessor: (code: number, body?: string | ob
         : typeof result.body === 'object' ? JSON.stringify(result.body) : result.body
     }
   }
+}
+
+function splitMultiValueParameters (data: MergedParameters | undefined): [Record<string, string>, Record<string, string[]>] {
+  const singles: Record<string, string> = {}
+  const multis: Record<string, string[]> = {}
+  Object.keys(data ?? {}).forEach(key => {
+    const value: any = data?.[key]
+    if (typeof value === 'string') {
+      singles[key] = value
+    } else if (Array.isArray(value)) {
+      multis[key] = value
+    }
+  })
+  return [ singles, multis ]
 }

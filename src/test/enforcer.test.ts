@@ -1,5 +1,5 @@
 import { expect } from 'chai'
-import { handler, route, LambdaEvent, Options } from '../app'
+import { handler, route, test, LambdaEvent, Options } from '../app'
 import path from 'path'
 
 const oasPath = path.resolve(__dirname, '../../resources/openapi.yml')
@@ -13,7 +13,7 @@ describe('enforcer-lambda', () => {
         count++
         res.status(200).send({ id: 123, name: 'Name' })
       }, options)
-      const result = await h(event('get', '/accounts/123'))
+      const result = await test(h, { path: '/accounts/123' })
       expect(count).to.equal(1)
       expect(result.statusCode).to.equal(200)
     })
@@ -24,7 +24,7 @@ describe('enforcer-lambda', () => {
         count++
         res.status(200).send({ id: 123, name: 'Name' })
       }, options)
-      const result = await h(event('get', '/foo'))
+      const result = await test(h, { path: '/foo' })
       expect(count).to.equal(0)
       expect(result.statusCode).to.equal(404)
     })
@@ -35,7 +35,7 @@ describe('enforcer-lambda', () => {
         count++
         res.status(200).send({ id: 123, name: 'Name' })
       }, options)
-      const result = await h(event('get', '/accounts/abc'))
+      const result = await test(h, { path: '/accounts/abc' })
       expect(count).to.equal(0)
       expect(result.statusCode).to.equal(400)
     })
@@ -46,7 +46,7 @@ describe('enforcer-lambda', () => {
         count++
         res.status(200).send({ id: 123, name: 'Name' })
       }, options)
-      const result = await h(event('get', '/accounts/123?foo=bar'))
+      const result = await test(h, { path: '/accounts/123?foo=bar' })
       expect(count).to.equal(0)
       expect(result.statusCode).to.equal(400)
     })
@@ -64,7 +64,7 @@ describe('enforcer-lambda', () => {
         count++
         res.status(200).send({ id: 123, name: 'Name' })
       }, options)
-      const result = await h(event('get', '/accounts/123?foo=bar'))
+      const result = await test(h, { path: '/accounts/123?foo=bar' })
       expect(count).to.equal(1)
       expect(result.statusCode).to.equal(200)
     })
@@ -75,7 +75,7 @@ describe('enforcer-lambda', () => {
         count++
         res.status(200).send({ id: 'abc' })
       }, options)
-      const result = await h(event('get', '/accounts/123'))
+      const result = await test(h, { path: '/accounts/123' })
       expect(count).to.equal(1)
       expect(result.statusCode).to.equal(500)
     })
@@ -92,7 +92,7 @@ describe('enforcer-lambda', () => {
           }
         }
       }, options)
-      const result = await h(event('get', '/accounts/123'))
+      const result = await test(h, { path: '/accounts/123' })
       expect(count).to.equal(1)
       expect(result.statusCode).to.equal(200)
     })
@@ -107,7 +107,7 @@ describe('enforcer-lambda', () => {
           }
         }
       }, options)
-      const result = await h(event('get', '/messages/123'))
+      const result = await test(h, { path: '/messages/123' })
       expect(count).to.equal(0)
       expect(result.statusCode).to.equal(404)
     })
@@ -122,7 +122,7 @@ describe('enforcer-lambda', () => {
           }
         }
       }, options)
-      const result = await h(event('get', '/accounts/abc'))
+      const result = await test(h, { path: '/accounts/abc' })
       expect(count).to.equal(0)
       expect(result.statusCode).to.equal(400)
     })
@@ -137,7 +137,7 @@ describe('enforcer-lambda', () => {
           }
         }
       }, options)
-      const result = await h(event('get', 'accounts/123?foo=bar'))
+      const result = await test(h, { path: 'accounts/123?foo=bar' })
       expect(count).to.equal(0)
       expect(result.statusCode).to.equal(400)
     })
@@ -159,7 +159,7 @@ describe('enforcer-lambda', () => {
           }
         }
       }, options)
-      const result = await h(event('get', 'accounts/123?foo=bar'))
+      const result = await test(h, { path: 'accounts/123?foo=bar' })
       expect(count).to.equal(1)
       expect(result.statusCode).to.equal(200)
     })
@@ -174,55 +174,9 @@ describe('enforcer-lambda', () => {
           }
         }
       }, options)
-      const result = await h(event('get', 'accounts/123'))
+      const result = await test(h, { path: 'accounts/123' })
       expect(count).to.equal(1)
       expect(result.statusCode).to.equal(500)
     })
   })
 })
-
-function event (method: string, path: string, data?: Partial<LambdaEvent>): LambdaEvent {
-  return {
-    httpMethod: method.toUpperCase(),
-    path,
-    body: data?.body ?? null,
-    headers: data?.headers ?? {},
-    isBase64Encoded: false,
-    multiValueHeaders: {},
-    multiValueQueryStringParameters: {},
-    pathParameters: null,
-    queryStringParameters: data?.queryStringParameters ?? {},
-    requestContext: {
-      accountId: '',
-      apiId: '',
-      authorizer: {},
-      identity: {
-        accessKey: null,
-        accountId: null,
-        apiKey: null,
-        apiKeyId: null,
-        caller: null,
-        clientCert: null,
-        cognitoAuthenticationProvider: null,
-        cognitoAuthenticationType: null,
-        cognitoIdentityId: null,
-        cognitoIdentityPoolId: null,
-        principalOrgId: null,
-        sourceIp: '',
-        user: null,
-        userAgent: null,
-        userArn: null
-      },
-      protocol: 'http',
-      httpMethod: method.toUpperCase(),
-      path,
-      stage: '',
-      requestId: '',
-      requestTimeEpoch: Date.now(),
-      resourceId: '',
-      resourcePath: ''
-    },
-    resource: '',
-    stageVariables: null
-  }
-}
