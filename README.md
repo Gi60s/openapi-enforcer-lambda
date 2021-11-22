@@ -1,4 +1,20 @@
 
+## Contents
+
+- [Installation](#installation)
+- [Documentation](#documentation)
+  - [Enforcer Lambda](#enforcer-lambda)
+  - [Handler](#handler)
+  - [Router](#router)
+  - [Test](#test)
+  - [Test Suite](#test-suite)
+- [Examples](#examples)
+  - [Simple Handler](#simple-handler)
+  - [Simple Router](#simple-router)
+  - [Example with More Control](#example-with-more-control)
+  - [Testing a Handler Once](#testing-a-handler-once)
+  - [Testing a Handler More Than Once](#testing-a-handler-more-than-once)
+
 ## Installation
 
 This library has a peer dependency on the `openapi-enforcer` package.
@@ -8,6 +24,7 @@ npm install openapi-enforcer-lambda openapi-enforcer
 ```
 
 ## Documentation
+
 ### Enforcer Lambda
 
 `enforcerLambda (openapi: string | unknown, options: Options = {}): { handler: (handler: Handler) => LambdaHandler, route: (controllers: RouteControllerMap) => LambdaHandler }`
@@ -69,7 +86,7 @@ xOperation | How operations are indicated in the provided OpenAPI document. | `s
 
 ## Examples
 
-**Simple Handler**
+### Simple Handler
 
 Follow the handler pattern if you have only a few endpoints.
 
@@ -93,7 +110,7 @@ exports.handler = enforcer.handler((req, res) => {
 })
 ```
 
-**Simple Router**
+### Simple Router
 
 Follow this router pattern if you have lots of endpoints.
 
@@ -135,7 +152,7 @@ module.exports = async function (dbConn, anotherDependency) {
 }
 ```
 
-**Example with More Control**
+### Example with More Control
 
 In this example we
 
@@ -178,4 +195,51 @@ exports.handler = function (event) {
     })
   }
 }
+```
+
+### Testing a Handler Once
+
+If you've created a lambda handler function then you can test it using the `test` function.
+
+```js
+const EnforcerLambda = require('openapi-enforcer-lambda')
+const enforcer = EnforcerLambda('./openapi.yml')
+
+exports.handler = enforcer.handler((req, res) => {
+    // your code here
+})
+
+const result = await EnforcerLambda.test(exports.handler, {
+  method: 'GET',
+  path: '/',
+  headers: {},
+  body: null
+})
+```
+
+### Testing a Handler More Than Once
+
+If you've created a lambda handler function then you can test it using the `test` function.
+
+```js
+const EnforcerLambda = require('openapi-enforcer-lambda')
+const enforcer = EnforcerLambda('./openapi.yml')
+
+exports.handler = enforcer.handler((req, res) => {
+    // your code here
+})
+
+const test = EnforcerLambda.testSuite(exports.handler)
+
+const result1 = await test({
+  method: 'GET',
+  path: '/',
+  headers: {},
+  body: null
+})
+
+const result2 = await test({
+  method: 'GET',
+  path: '/foo'
+})
 ```
