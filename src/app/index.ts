@@ -210,11 +210,11 @@ export function route (openapi: string | unknown, controllers: RouteControllerMa
 }
 
 export async function test (handler: LambdaHandler, req: TestRequest): Promise<TestResponse> {
-  const [ path, qs ] = req.path.split('?')
+  const [path, qs] = req.path.split('?')
   const body: string | null = req.body !== null && typeof req.body === 'object' ? JSON.stringify(req.body) : req.body ?? null
   const method = req.method?.toUpperCase() ?? 'GET'
-  const [ headers, multiValueHeaders ] = splitMultiValueParameters(req.headers)
-  const [ queryStringParameters, multiValueQueryStringParameters ] = splitMultiValueParameters(qs !== undefined ? querystring.parse(qs) : {})
+  const [headers, multiValueHeaders] = splitMultiValueParameters(req.headers)
+  const [queryStringParameters, multiValueQueryStringParameters] = splitMultiValueParameters(qs !== undefined ? querystring.parse(qs) : {})
 
   const event: LambdaEvent = {
     body,
@@ -277,8 +277,8 @@ export async function test (handler: LambdaHandler, req: TestRequest): Promise<T
 }
 
 export function testSuite (handler: LambdaHandler): (req: TestRequest) => Promise<TestResponse> {
-  return function (req: TestRequest): Promise<TestResponse> {
-    return test(handler, req)
+  return async function (req: TestRequest): Promise<TestResponse> {
+    return await test(handler, req)
   }
 }
 
@@ -451,5 +451,5 @@ function splitMultiValueParameters (data: MergedParameters | undefined): [Record
       multis[key] = value
     }
   })
-  return [ singles, multis ]
+  return [singles, multis]
 }

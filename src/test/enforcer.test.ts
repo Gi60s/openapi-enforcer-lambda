@@ -1,5 +1,5 @@
 import { expect } from 'chai'
-import { handler, route, test, LambdaEvent, Options } from '../app'
+import { handler, route, test, Options } from '../app'
 import path from 'path'
 
 const oasPath = path.resolve(__dirname, '../../resources/openapi.yml')
