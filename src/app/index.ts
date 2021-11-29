@@ -3,6 +3,8 @@ import path from 'path'
 import { Enforcer } from 'openapi-enforcer'
 import querystring from 'querystring'
 
+const rxContentType = /^content-type$/i
+
 process.on('unhandledRejection', (e) => {
   console.log(e)
   process.exit(1)
@@ -18,6 +20,11 @@ export interface CookieOptions {
   secure?: boolean
   signed?: boolean
   sameSite?: 'lax' | 'strict' | 'none'
+}
+
+export interface EnforcerLambda {
+  handler: (handler: Handler) => LambdaHandler
+  route: (controllers: RouteControllerMap) => LambdaHandler
 }
 
 export type Handler = (req: Request, res: Response) => Promise<void>
@@ -38,6 +45,7 @@ interface OperationsMapData {
 
 export interface Options {
   allowOtherQueryParameters?: boolean | string[]
+  bodyParser?: (contentType: string, body: string) => string | object
   enforcerOptions?: Record<string, any>
   handleBadRequest?: boolean
   handleBadResponse?: boolean
@@ -48,7 +56,7 @@ export interface Options {
   xOperation?: string
 }
 
-type MergedParameters = Record<string, string | number | boolean | Array<string | number | boolean> | undefined>
+type MergedParameters = Record<string, string | string[] | undefined>
 
 export interface Request {
   body: string | object
@@ -100,7 +108,7 @@ export interface TestResponse {
   statusCode: number
 }
 
-export default function enforcerLambda (openapi: string | unknown, options: Options = {}): { handler: (handler: Handler) => LambdaHandler, route: (controllers: RouteControllerMap) => LambdaHandler } {
+export default function enforcerLambda (openapi: string | unknown, options: Options = {}): EnforcerLambda {
   if (options.allowOtherQueryParameters === undefined) options.allowOtherQueryParameters = false
   if (options.handleBadRequest === undefined) options.handleBadRequest = true
   if (options.handleBadResponse === undefined) options.handleBadResponse = true
@@ -261,7 +269,9 @@ export async function test (handler: LambdaHandler, req: TestRequest): Promise<T
   }
   const res = await handler(event)
 
-  const resHeaders = mergeMultiValueParameters(res.headers, res.multiValueHeaders)
+  const resSingleHeaders = convertResponseHeaders(res.headers) as Record<string, string>
+  const resMultiHeaders = convertResponseHeaders(res.multiValueHeaders) as Record<string, string[]>
+  const resHeaders = mergeMultiValueParameters(resSingleHeaders, resMultiHeaders)
   const resBody = (() => {
     try {
       return JSON.parse(res.body)
@@ -280,6 +290,15 @@ export function testSuite (handler: LambdaHandler): (req: TestRequest) => Promis
   return async function (req: TestRequest): Promise<TestResponse> {
     return await test(handler, req)
   }
+}
+
+function convertResponseHeaders (headers: Record<string, boolean | number | string | Array<boolean | number | string>> | undefined): Record<string, string | string[]> | undefined {
+  if (headers === undefined) return
+  const result: Record<string, string | string[]> = {}
+  Object.keys(headers).forEach(key => {
+    result[key] = String(headers[key])
+  })
+  return result
 }
 
 async function initialize (event: LambdaEvent, openapi: Promise<any> | any, options: Options): Promise<{ req: Request, res: Response, result: ResponseResult }> {
@@ -323,13 +342,48 @@ async function initialize (event: LambdaEvent, openapi: Promise<any> | any, opti
     body: undefined
   }
 
+  // add json and form-urlencoded body parsers
+  let body: string | object | undefined = undefined
+  if (event.body !== null && event.body !== undefined) {
+    const headerKeys = Object.keys(event.headers)
+    const contentTypeKey = headerKeys.find(v => rxContentType.test(v))
+    if (contentTypeKey !== undefined) {
+      const contentType = event.headers[contentTypeKey] ?? ''
+      if (contentType === 'application/json') {
+        try {
+          body = JSON.parse(event.body)
+        } catch (e) {
+          throw new EnforcerStatusError(400, 'Invalid JSON body')
+        }
+      } else if (contentType === 'application/x-www-form-urlencoded') {
+        try {
+          body = querystring.parse(event.body)
+        } catch (e) {
+          throw new EnforcerStatusError(400, 'Invalid form-urlencoded body')
+        }
+      } else if (options.bodyParser !== undefined) {
+        try {
+          body = options.bodyParser(contentType, event.body)
+        } catch (e) {
+          throw new EnforcerStatusError(400, e.message)
+        }
+      }
+    } else if (options.bodyParser !== undefined) {
+      try {
+        body = options.bodyParser('', event.body)
+      } catch (e) {
+        throw new EnforcerStatusError(400, e.message)
+      }
+    }
+  }
+
   // validate and process the request
   const requestOptions = options.allowOtherQueryParameters !== undefined ? { allowOtherQueryParameters: options.allowOtherQueryParameters } : {}
   const [req, error] = openapi.request({
     method: event.httpMethod.toLowerCase(),
     path: event.path + queryString,
-    headers: event.headers,
-    ...(event.body !== null ? { body: event.body } : {})
+    headers: mergeMultiValueParameters(event.headers, event.multiValueHeaders),
+    ...(body !== undefined ? { body } : {})
   }, requestOptions)
   if (error !== undefined) throw new EnforcerStatusError(error.statusCode, error.toString())
 
@@ -382,7 +436,7 @@ async function initialize (event: LambdaEvent, openapi: Promise<any> | any, opti
   }
 }
 
-function mergeMultiValueParameters (singles: Record<string, string | number | boolean> | undefined, multis: Record<string, Array<string | number | boolean>> | undefined): MergedParameters {
+function mergeMultiValueParameters (singles: Record<string, string | undefined>, multis: Record<string, string[] | undefined>): MergedParameters {
   const merged: MergedParameters = {}
   if (singles !== undefined) {
     Object.keys(singles).forEach(key => {

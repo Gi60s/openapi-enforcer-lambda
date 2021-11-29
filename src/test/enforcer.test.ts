@@ -179,4 +179,59 @@ describe('enforcer-lambda', () => {
       expect(result.statusCode).to.equal(500)
     })
   })
+
+  describe('body parser', () => {
+    it('will auto-parse valid json', async () => {
+      const h = handler(oasPath, async (req, res) => {
+        const body = req.body as { name: string }
+        res.status(201).send({ id: 123, name: body.name })
+      }, options)
+      const result = await test(h, {
+        method: 'post',
+        path: '/accounts',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ name: 'Bob' })
+      })
+      expect(result.statusCode).to.equal(201)
+      expect((result.body as { name: string }).name).to.equal('Bob')
+    })
+
+    it('will auto-parse valid x-www-form-urlencoded', async () => {
+      const h = handler(oasPath, async (req, res) => {
+        const body = req.body as { name: string }
+        res.status(201).send({ id: 123, name: body.name })
+      }, options)
+      const result = await test(h, {
+        method: 'post',
+        path: '/accounts',
+        headers: { 'content-type': 'application/x-www-form-urlencoded' },
+        body: 'name=Bob'
+      })
+      expect(result.statusCode).to.equal(201)
+      expect((result.body as { name: string }).name).to.equal('Bob')
+    })
+
+    it('will use provided body parser if not json or form url encoded', async () => {
+      const options: Options = {
+        bodyParser (type, body) {
+          return {
+            name: type + ':' + body
+          }
+        },
+        logErrors: false,
+        enforcerOptions: { hideWarnings: true }
+      }
+      const h = handler(oasPath, async (req, res) => {
+        res.status(201).send({ id: 123, name: (req.body as { name: string }).name })
+      }, options)
+      const result = await test(h, {
+        method: 'post',
+        path: '/accounts',
+        headers: { 'content-type': 'application/fake' },
+        body: 'foo-bar'
+      })
+      expect(result.statusCode).to.equal(201)
+      expect((result.body as { name: string }).name).to.equal('application/fake:foo-bar')
+    })
+  })
 })
