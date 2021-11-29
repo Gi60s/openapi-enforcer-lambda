@@ -13,6 +13,12 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/Account'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Account'
+          application/fake:
+            schema:
+              $ref: '#/components/schemas/Account'
       responses:
         201:
           description: Created account
