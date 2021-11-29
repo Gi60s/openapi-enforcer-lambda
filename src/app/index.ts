@@ -219,10 +219,23 @@ export function route (openapi: string | unknown, controllers: RouteControllerMa
 
 export async function test (handler: LambdaHandler, req: TestRequest): Promise<TestResponse> {
   const [path, qs] = req.path.split('?')
-  const body: string | null = req.body !== null && typeof req.body === 'object' ? JSON.stringify(req.body) : req.body ?? null
   const method = req.method?.toUpperCase() ?? 'GET'
   const [headers, multiValueHeaders] = splitMultiValueParameters(req.headers)
   const [queryStringParameters, multiValueQueryStringParameters] = splitMultiValueParameters(qs !== undefined ? querystring.parse(qs) : {})
+  const bodyIsObject = req.body !== null && typeof req.body === 'object'
+  let body: string | null = req.body as string ?? null
+
+  if (bodyIsObject) {
+    const contentType = getContentTypeFromHeaders(headers)
+    if (contentType === undefined) {
+      headers['content-type'] = 'application/json'
+      body = JSON.stringify(req.body)
+    } else if (contentType === 'application/json') {
+      body = JSON.stringify(req.body)
+    } else if (contentType === 'application/x-www-form-urlencoded') {
+      body = querystring.stringify(req.body as any)
+    }
+  }
 
   const event: LambdaEvent = {
     body,
@@ -301,6 +314,18 @@ function convertResponseHeaders (headers: Record<string, boolean | number | stri
   return result
 }
 
+function getContentTypeFromHeaders (headers: Record<string, string | undefined> | undefined): string | undefined {
+  if (headers === undefined) return
+
+  const headerKeys = Object.keys(headers)
+  const contentTypeKey = headerKeys.find(v => rxContentType.test(v))
+  if (contentTypeKey === undefined) return
+
+  return Array.isArray(headers[contentTypeKey])
+    ? headers[contentTypeKey]?.[0]
+    : headers[contentTypeKey] as string
+}
+
 async function initialize (event: LambdaEvent, openapi: Promise<any> | any, options: Options): Promise<{ req: Request, res: Response, result: ResponseResult }> {
   if (openapi instanceof Promise) {
     try {
@@ -345,32 +370,22 @@ async function initialize (event: LambdaEvent, openapi: Promise<any> | any, opti
   // add json and form-urlencoded body parsers
   let body: string | object | undefined
   if (event.body !== null && event.body !== undefined) {
-    const headerKeys = Object.keys(event.headers)
-    const contentTypeKey = headerKeys.find(v => rxContentType.test(v))
-    if (contentTypeKey !== undefined) {
-      const contentType = event.headers[contentTypeKey] ?? ''
-      if (contentType === 'application/json') {
-        try {
-          body = JSON.parse(event.body)
-        } catch (e) {
-          throw new EnforcerStatusError(400, 'Invalid JSON body')
-        }
-      } else if (contentType === 'application/x-www-form-urlencoded') {
-        try {
-          body = querystring.parse(event.body)
-        } catch (e) {
-          throw new EnforcerStatusError(400, 'Invalid form-urlencoded body')
-        }
-      } else if (options.bodyParser !== undefined) {
-        try {
-          body = options.bodyParser(contentType, event.body)
-        } catch (e) {
-          throw new EnforcerStatusError(400, e.message)
-        }
+    const contentType = getContentTypeFromHeaders(event.headers)
+    if (contentType === 'application/json') {
+      try {
+        body = JSON.parse(event.body)
+      } catch (e) {
+        throw new EnforcerStatusError(400, 'Invalid JSON body')
+      }
+    } else if (contentType === 'application/x-www-form-urlencoded') {
+      try {
+        body = querystring.parse(event.body)
+      } catch (e) {
+        throw new EnforcerStatusError(400, 'Invalid form-urlencoded body')
       }
     } else if (options.bodyParser !== undefined) {
       try {
-        body = options.bodyParser('', event.body)
+        body = options.bodyParser(contentType ?? '', event.body)
       } catch (e) {
         throw new EnforcerStatusError(400, e.message)
       }
