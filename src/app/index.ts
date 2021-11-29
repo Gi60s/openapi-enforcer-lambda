@@ -343,7 +343,7 @@ async function initialize (event: LambdaEvent, openapi: Promise<any> | any, opti
   }
 
   // add json and form-urlencoded body parsers
-  let body: string | object | undefined = undefined
+  let body: string | object | undefined
   if (event.body !== null && event.body !== undefined) {
     const headerKeys = Object.keys(event.headers)
     const contentTypeKey = headerKeys.find(v => rxContentType.test(v))
