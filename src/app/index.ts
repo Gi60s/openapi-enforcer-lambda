@@ -411,13 +411,13 @@ async function initialize (event: LambdaEvent, openapi: Promise<any> | any, opti
     req: {
       ...(req.body !== undefined ? { body: req.body } : {}), // add the body if it was included
       cookies: Object.assign({}, req.cookie ?? {}),
-      headers: Object.assign(headers,req.headers ?? {}),
+      headers: Object.assign(headers, req.headers ?? {}),
       method,
       operation: req.operation,
       params: req.path ?? {},
       path: event.path,
       pathKey: req.pathKey,
-      query: Object.assign(query,req.query ?? {}),
+      query: Object.assign(query, req.query ?? {}),
       response: req.response
     },
     res: {
