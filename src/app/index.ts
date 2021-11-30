@@ -337,11 +337,13 @@ async function initialize (event: LambdaEvent, openapi: Promise<any> | any, opti
 
   // get all query parameters into a single map
   const qsMap: Record<string, string[]> = {}
+  const query: Record<string, string | string[]> = {}
   let hasQs = false
   if (event.queryStringParameters !== null) {
     const qsParams = event.queryStringParameters
     Object.keys(qsParams).forEach(key => {
       qsMap[key] = [qsParams[key] ?? '']
+      query[key] = qsParams[key] ?? ''
       hasQs = true
     })
   }
@@ -349,6 +351,7 @@ async function initialize (event: LambdaEvent, openapi: Promise<any> | any, opti
     const qsParams = event.multiValueQueryStringParameters
     Object.keys(qsParams).forEach(key => {
       qsMap[key] = qsParams[key] ?? ['']
+      query[key] = qsParams[key] ?? ['']
       hasQs = true
     })
   }
@@ -395,10 +398,11 @@ async function initialize (event: LambdaEvent, openapi: Promise<any> | any, opti
   // validate and process the request
   const requestOptions = options.allowOtherQueryParameters !== undefined ? { allowOtherQueryParameters: options.allowOtherQueryParameters } : {}
   const method = event.httpMethod.toLowerCase()
+  const headers = mergeMultiValueParameters(event.headers, event.multiValueHeaders)
   const [req, error] = openapi.request({
     method,
     path: event.path + queryString,
-    headers: mergeMultiValueParameters(event.headers, event.multiValueHeaders),
+    headers,
     ...(body !== undefined ? { body } : {})
   }, requestOptions)
   if (error !== undefined) throw new EnforcerStatusError(error.statusCode, error.toString())
@@ -406,14 +410,14 @@ async function initialize (event: LambdaEvent, openapi: Promise<any> | any, opti
   return {
     req: {
       ...(req.body !== undefined ? { body: req.body } : {}), // add the body if it was included
-      cookies: req.cookie ?? {},
-      headers: req.headers ?? {},
+      cookies: Object.assign({}, req.cookie ?? {}),
+      headers: Object.assign(headers,req.headers ?? {}),
       method,
       operation: req.operation,
       params: req.path ?? {},
       path: event.path,
       pathKey: req.pathKey,
-      query: req.query ?? {},
+      query: Object.assign(query,req.query ?? {}),
       response: req.response
     },
     res: {
