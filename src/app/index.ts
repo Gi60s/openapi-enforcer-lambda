@@ -59,8 +59,8 @@ export interface Options {
 type MergedParameters = Record<string, string | string[] | undefined>
 
 export interface Request {
-  body: string | object
-  cookie: Record<string, any>
+  body?: string | object
+  cookies: Record<string, any>
   headers: Record<string, any>
   method: string
   operation: any
@@ -394,8 +394,9 @@ async function initialize (event: LambdaEvent, openapi: Promise<any> | any, opti
 
   // validate and process the request
   const requestOptions = options.allowOtherQueryParameters !== undefined ? { allowOtherQueryParameters: options.allowOtherQueryParameters } : {}
+  const method = event.httpMethod.toLowerCase()
   const [req, error] = openapi.request({
-    method: event.httpMethod.toLowerCase(),
+    method,
     path: event.path + queryString,
     headers: mergeMultiValueParameters(event.headers, event.multiValueHeaders),
     ...(body !== undefined ? { body } : {})
@@ -403,7 +404,18 @@ async function initialize (event: LambdaEvent, openapi: Promise<any> | any, opti
   if (error !== undefined) throw new EnforcerStatusError(error.statusCode, error.toString())
 
   return {
-    req,
+    req: {
+      ...(req.body !== undefined ? { body: req.body } : {}), // add the body if it was included
+      cookies: req.cookie ?? {},
+      headers: req.headers ?? {},
+      method,
+      operation: req.operation,
+      params: req.path ?? {},
+      path: event.path,
+      pathKey: req.pathKey,
+      query: req.query ?? {},
+      response: req.response
+    },
     res: {
       cookie (name: string, value: string | object, options?: CookieOptions): Response {
         if (options === undefined) options = {}
