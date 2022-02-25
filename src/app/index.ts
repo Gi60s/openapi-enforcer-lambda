@@ -291,10 +291,10 @@ export async function test (handler: LambdaHandler, req: TestRequest): Promise<T
     logGroupName: '',
     logStreamName: '',
     memoryLimitInMB: '',
-    done(error?: Error, result?: any): void {},
-    fail(error: Error | string): void {},
-    succeed(messageOrObject: any, object?: any): void {},
-    getRemainingTimeInMillis(): number { return 5000 }
+    done (_error?: Error, _result?: any): void {},
+    fail (_error: Error | string): void {},
+    succeed (_messageOrObject: any, _object?: any): void {},
+    getRemainingTimeInMillis (): number { return 5000 }
   }
 
   const res = await handler(event, context)
