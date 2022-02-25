@@ -1,17 +1,16 @@
-import {Context} from 'aws-lambda'
+import { Context } from 'aws-lambda'
 import http from 'http'
 import querystring from 'querystring'
-import {LambdaEvent, LambdaHandler, LambdaResult} from './index'
-import exp from 'constants'
+import { LambdaEvent, LambdaHandler, LambdaResult } from './index'
 
 // This is a very lightweight server that translates between requests using http and lambda.
 // This server is not intended for use in production. Instead, it is useful for testing using
 // Postman or some other interface that wants to talk to our locally running lambda via http.
 
 export interface ServerConfiguration {
-  handler: LambdaHandler,
-  listener: http.Server | null,
-  port: number,
+  handler: LambdaHandler
+  listener: http.Server | null
+  port: number
   server: http.Server
 }
 
@@ -24,8 +23,8 @@ export interface ServerOptions {
 const map: WeakMap<Server, ServerConfiguration> = new WeakMap()
 
 export class Server {
-  constructor(port: number, handler: LambdaHandler, options?: ServerOptions) {
-    const server = http.createServer(async (req, res) => {
+  constructor (port: number, handler: LambdaHandler, options?: ServerOptions) {
+    const server = http.createServer((req, res) => {
       const [path, query] = (req.url ?? '/').split('?')
       const qsData = parseParameters(querystring.parse(query))
       const headerData = parseParameters(req.headers)
@@ -54,8 +53,14 @@ export class Server {
           runLambda(event, res, handler)
         })
       } else if (contentType !== undefined && options?.bodyParser !== undefined) {
-        await options.bodyParser(contentType, req, event)
-        runLambda(event, res, handler)
+        options.bodyParser(contentType, req, event)
+          .then(() => {
+            runLambda(event, res, handler)
+          })
+          .catch(e => {
+            console.error(e)
+            runLambda(event, res, handler)
+          })
       } else {
         runLambda(event, res, handler)
       }
@@ -81,10 +86,10 @@ export class Server {
     return address !== null && typeof address === 'object' ? address.port : data.port
   }
 
-  start (): Promise<Server> {
+  async start (): Promise<Server> {
     const data = map.get(this)
     if (data === undefined) throw Error('Invalid execution context')
-    return new Promise((resolve, reject) => {
+    return await new Promise((resolve, reject) => {
       if (data.listener === null) {
         data.listener = data.server.listen(data.port, () => {
           resolve(this)
@@ -95,10 +100,10 @@ export class Server {
     })
   }
 
-  stop (): Promise<Server> {
+  async stop (): Promise<Server> {
     const data = map.get(this)
     if (data === undefined) throw Error('Invalid execution context')
-    return new Promise((resolve, reject) => {
+    return await new Promise((resolve, reject) => {
       if (data.listener === null) {
         resolve(this)
       } else {
@@ -129,7 +134,7 @@ function parseParameters (params: Record<string, string | string[] | undefined>)
   }
 }
 
-function runLambda (event: LambdaEvent, res: http.ServerResponse, handler: LambdaHandler) {
+function runLambda (event: LambdaEvent, res: http.ServerResponse, handler: LambdaHandler): void {
   const context: Context = {
     awsRequestId: '',
     callbackWaitsForEmptyEventLoop: false,

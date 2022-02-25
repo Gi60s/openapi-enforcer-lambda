@@ -250,19 +250,19 @@ describe('enforcer-lambda', () => {
       await server.start()
     })
 
-    afterEach(() => {
-      return server.stop()
+    afterEach(async () => {
+      return await server.stop()
     })
 
     it('can proxy server requests', (done) => {
-      http.get('http://localhost:' + server.port + '/accounts/123', res => {
+      http.get('http://localhost:' + String(server.port) + '/accounts/123', res => {
         try {
           expect(res.statusCode).to.equal(200)
           expect(res.headers['x-custom-header']).to.equal('custom')
 
           res.setEncoding('utf8')
           let rawData = ''
-          res.on('data', (chunk) => {
+          res.on('data', (chunk: string) => {
             rawData += chunk
           })
           res.on('end', () => {
