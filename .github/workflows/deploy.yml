@@ -15,6 +15,28 @@ env:
   node_version: "14.x"
 
 jobs:
+#  env:
+#    name: Set Env Vars
+#    runs-on: ubuntu-latest
+#    steps:
+#      - name: Set Env Vars
+#        run: |
+#          matrix='{
+#            "registry":[
+#              {
+#                "token":"NPM_TOKEN",
+#                "url":"https://registry.npmjs.org"
+#              },
+#              {
+#                "token":"GITHUB_TOKEN",
+#                "url":"https://npm.pkg.github.com"
+#              }
+#            ]
+#          }'
+#          echo matrix=`echo $matrix | jq -c .` >> $GITHUB_ENV
+#    outputs:
+#      matrix: ${{ env.matrix }}
+
   env:
     name: Set Env Vars
     runs-on: ubuntu-latest
@@ -29,18 +51,6 @@ jobs:
               }
             ]
           }'
-#          matrix='{
-#            "registry":[
-#              {
-#                "token":"NPM_TOKEN",
-#                "url":"https://registry.npmjs.org"
-#              },
-#              {
-#                "token":"GITHUB_TOKEN",
-#                "url":"https://npm.pkg.github.com"
-#              }
-#            ]
-#          }'
           echo matrix=`echo $matrix | jq -c .` >> $GITHUB_ENV
     outputs:
       matrix: ${{ env.matrix }}
