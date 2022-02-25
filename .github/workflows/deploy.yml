@@ -27,10 +27,10 @@ jobs:
                 "token":"NPM_TOKEN",
                 "url":"https://registry.npmjs.org"
               },
-              {
-                "token":"GITHUB_TOKEN",
-                "url":"https://npm.pkg.github.com"
-              }
+#              {
+#                "token":"GITHUB_TOKEN",
+#                "url":"https://npm.pkg.github.com"
+#              }
             ]
           }'
           echo matrix=`echo $matrix | jq -c .` >> $GITHUB_ENV
