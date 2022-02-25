@@ -3,7 +3,7 @@ import path from 'path'
 import { Enforcer } from 'openapi-enforcer'
 import querystring from 'querystring'
 
-export { Server, ServerConfiguration } from './server'
+export { Server, ServerOptions } from './server'
 
 const rxContentType = /^content-type$/i
 
