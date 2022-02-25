@@ -14,6 +14,7 @@
   - [Example with More Control](#example-with-more-control)
   - [Testing a Handler Once](#testing-a-handler-once)
   - [Testing a Handler More Than Once](#testing-a-handler-more-than-once)
+  - [Simple HTTP Dev Server](#simple-http-dev-server)
 
 ## Installation
 
@@ -56,6 +57,7 @@ persons: {
   }
 }
 ```
+
 Complete [examples](#examples) with the handler and the router are provided below.
 
 ### Handler
@@ -70,19 +72,17 @@ This function also provides the same functionality as the EnforcerLambda functio
 
 ### Options
 
-Property | Description | Type | Default
----------|-------------|------|--------
-allowOtherQueryParameters | Query parameters not specified in the OpenAPI document are permitted. | `boolean \ string[]` | false
-enforcerOptions | Other options permitted by the [OpenAPI enforcer](https://www.npmjs.com/package/openapi-enforcer) | `Record<string, any>` | null
-handleBadRequest | Bad requests will be handled by the enforcer. | `boolean` | true
-handleBadResponse | Bad responses will be handled by the enforcer. | `boolean` | true
-handleNotFound | Requests that need to return a status 404 will be handled by the enforcer. | `boolean` | true
-handleMethodNotAllowed | Requests that are not allowed will be handled by the enforcer. | `boolean` | true
-logErrors | Log errors to the console. | `boolean` | true
-xController | How controllers are indicated in the provided OpenAPI document. | `string` | `x-controller`
-xOperation | How operations are indicated in the provided OpenAPI document. | `string` | `x-operation`
-
-
+| Property                  | Description                                                                                       | Type                  | Default        |
+|---------------------------|---------------------------------------------------------------------------------------------------|-----------------------|----------------|
+| allowOtherQueryParameters | Query parameters not specified in the OpenAPI document are permitted.                             | `boolean \ string[]`  | false          |
+| enforcerOptions           | Other options permitted by the [OpenAPI enforcer](https://www.npmjs.com/package/openapi-enforcer) | `Record<string, any>` | null           |
+| handleBadRequest          | Bad requests will be handled by the enforcer.                                                     | `boolean`             | true           |
+| handleBadResponse         | Bad responses will be handled by the enforcer.                                                    | `boolean`             | true           |
+| handleNotFound            | Requests that need to return a status 404 will be handled by the enforcer.                        | `boolean`             | true           |
+| handleMethodNotAllowed    | Requests that are not allowed will be handled by the enforcer.                                    | `boolean`             | true           |
+| logErrors                 | Log errors to the console.                                                                        | `boolean`             | true           |
+| xController               | How controllers are indicated in the provided OpenAPI document.                                   | `string`              | `x-controller` |
+| xOperation                | How operations are indicated in the provided OpenAPI document.                                    | `string`              | `x-operation`  |
 
 ## Examples
 
@@ -243,3 +243,44 @@ const result2 = await test({
   path: '/foo'
 })
 ```
+
+### Simple HTTP Dev Server
+
+This pattern is for development purposes only. Using this in production is not recommended.
+
+This will start a server that you can connect to via HTTP and it will convert incoming HTTP requests into AWS Lambda events.
+The event will then be sent to the lambda handler. The response that is produced will be translated back into an HTTP
+response and sent back to the client.
+
+This is ideal when you want to use Postman to test your Lambda, or if you need to use ngrok or a similar service to help
+with the development of your lambda.
+
+**index.js**
+
+Define your lambda handler.
+
+```js
+const EnforcerLambda = require('openapi-enforcer-lambda')
+const enforcer = EnforcerLambda('./openapi.yml')
+
+exports.handler = enforcer.handler((req, res) => {
+    // your request processing code here
+})
+```
+
+**server.js**
+
+Run this `server.js` file to start a server proxy that calls your lambda.
+
+```js
+const { Server } = require('openapi-enforcer-lambda')
+const { handler } = require('./index')
+
+const server = new Server(3000, handler)
+server.start()
+  .then(() => {
+    console.log('Server listening on port: ' + server.port)
+  })
+  .catch(console.error)
+```
+
