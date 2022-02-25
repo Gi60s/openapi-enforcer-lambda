@@ -3,6 +3,8 @@ import path from 'path'
 import { Enforcer } from 'openapi-enforcer'
 import querystring from 'querystring'
 
+export { Server, ServerConfiguration } from './server'
+
 const rxContentType = /^content-type$/i
 
 process.on('unhandledRejection', (e) => {
@@ -243,43 +245,13 @@ export async function test (handler: LambdaHandler, req: TestRequest): Promise<T
     headers,
     httpMethod: method,
     isBase64Encoded: false,
-    multiValueHeaders,
-    multiValueQueryStringParameters,
     path,
-    pathParameters: null,
     queryStringParameters,
     requestContext: {
-      accountId: '',
-      apiId: '',
-      authorizer: {},
-      identity: {
-        accessKey: null,
-        accountId: null,
-        apiKey: null,
-        apiKeyId: null,
-        caller: null,
-        clientCert: null,
-        cognitoAuthenticationProvider: null,
-        cognitoAuthenticationType: null,
-        cognitoIdentityId: null,
-        cognitoIdentityPoolId: null,
-        principalOrgId: null,
-        sourceIp: '',
-        user: null,
-        userAgent: null,
-        userArn: null
-      },
-      protocol: 'https',
-      httpMethod: method,
-      path,
-      stage: '',
-      requestId: '',
-      requestTimeEpoch: Date.now(),
-      resourceId: '',
-      resourcePath: ''
+      elb: { targetGroupArn: '' }
     },
-    resource: '',
-    stageVariables: null
+    multiValueHeaders,
+    multiValueQueryStringParameters
   }
 
   const context: Context = {
@@ -531,6 +503,12 @@ function sendValidResponse (responseProcessor: (code: number, body?: string | ob
     const message: string = error.toString() ?? ''
     throw new EnforcerStatusError(500, `Invalid response: ${message}`)
   } else {
+    // v1 of the enforcer only includes headers that are defined in the openapi document, so we need to add the
+    // remaining headers back in here
+    Object.keys(result.headers).forEach(name => {
+      if (!(name in response.headers)) response.headers[name] = result.headers[name]
+    })
+
     return {
       statusCode: result.statusCode,
       headers: response.headers,
