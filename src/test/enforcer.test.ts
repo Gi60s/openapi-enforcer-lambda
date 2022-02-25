@@ -1,5 +1,6 @@
 import { expect } from 'chai'
-import { handler, route, test, Options } from '../app'
+import { handler, route, test, Server, Options } from '../app'
+import http from 'http'
 import path from 'path'
 
 const oasPath = path.resolve(__dirname, '../../resources/openapi.yml')
@@ -232,6 +233,51 @@ describe('enforcer-lambda', () => {
       })
       expect(result.statusCode).to.equal(201)
       expect((result.body as { name: string }).name).to.equal('application/fake:foo-bar')
+    })
+  })
+
+  describe('server', () => {
+    let server: Server
+
+    beforeEach(async () => {
+      const h = handler(oasPath, async (req, res) => {
+        res.status(200)
+          .set('x-custom-header', 'custom')
+          .send({ id: 123, name: 'Bob' })
+      }, options)
+
+      server = new Server(0, h)
+      await server.start()
+    })
+
+    afterEach(() => {
+      return server.stop()
+    })
+
+    it('can proxy server requests', (done) => {
+      http.get('http://localhost:' + server.port + '/accounts/123', res => {
+        try {
+          expect(res.statusCode).to.equal(200)
+          expect(res.headers['x-custom-header']).to.equal('custom')
+
+          res.setEncoding('utf8')
+          let rawData = ''
+          res.on('data', (chunk) => {
+            rawData += chunk
+          })
+          res.on('end', () => {
+            try {
+              const data = JSON.parse(rawData)
+              expect(data).to.deep.equal({ id: 123, name: 'Bob' })
+              done()
+            } catch (e) {
+              done(e)
+            }
+          })
+        } catch (e) {
+          done(e)
+        }
+      })
     })
   })
 })
