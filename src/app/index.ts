@@ -1,4 +1,4 @@
-import { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda'
+import { APIGatewayProxyEvent, APIGatewayProxyResult, ALBEvent, ALBResult, Context } from 'aws-lambda'
 import path from 'path'
 import { Enforcer } from 'openapi-enforcer'
 import querystring from 'querystring'
@@ -31,11 +31,11 @@ export type Handler = (req: Request, res: Response) => Promise<void>
 
 type Headers = MergedParameters
 
-export type LambdaEvent = APIGatewayProxyEvent
+export type LambdaEvent = APIGatewayProxyEvent | ALBEvent
 
-export type LambdaHandler = (event: LambdaEvent) => Promise<LambdaResult>
+export type LambdaHandler = (event: LambdaEvent, context: Context) => Promise<LambdaResult>
 
-export type LambdaResult = APIGatewayProxyResult
+export type LambdaResult = APIGatewayProxyResult | ALBResult
 
 interface OperationsMapData {
   xController: string
@@ -61,6 +61,7 @@ type MergedParameters = Record<string, string | string[] | undefined>
 export interface Request {
   body?: string | object
   cookies: Record<string, any>
+  context: Context
   headers: Record<string, any>
   method: string
   operation: any
@@ -126,9 +127,9 @@ export default function enforcerLambda (openapi: string | unknown, options: Opti
 
   return {
     handler (handler: Handler): LambdaHandler {
-      return async function (event: LambdaEvent) {
+      return async function (event: LambdaEvent, context: Context) {
         try {
-          const { req, res, result } = await initialize(event, openapi, options)
+          const { req, res, result } = await initialize(event, context, openapi, options)
           await handler(req, res)
           return sendValidResponse(req.response, result)
         } catch (e) {
@@ -138,9 +139,9 @@ export default function enforcerLambda (openapi: string | unknown, options: Opti
     },
 
     route (controllers: RouteControllerMap): LambdaHandler {
-      return async function (event: LambdaEvent) {
+      return async function (event: LambdaEvent, context: Context) {
         try {
-          const { req, res, result } = await initialize(event, openapi, options)
+          const { req, res, result } = await initialize(event, context, openapi, options)
           const { method, path, operation } = req
 
           // get the x-controller and x-operation for the operation
@@ -280,14 +281,30 @@ export async function test (handler: LambdaHandler, req: TestRequest): Promise<T
     resource: '',
     stageVariables: null
   }
-  const res = await handler(event)
+
+  const context: Context = {
+    awsRequestId: '',
+    callbackWaitsForEmptyEventLoop: false,
+    functionName: '',
+    functionVersion: '',
+    invokedFunctionArn: '',
+    logGroupName: '',
+    logStreamName: '',
+    memoryLimitInMB: '',
+    done(error?: Error, result?: any): void {},
+    fail(error: Error | string): void {},
+    succeed(messageOrObject: any, object?: any): void {},
+    getRemainingTimeInMillis(): number { return 5000 }
+  }
+
+  const res = await handler(event, context)
 
   const resSingleHeaders = convertResponseHeaders(res.headers) as Record<string, string>
   const resMultiHeaders = convertResponseHeaders(res.multiValueHeaders) as Record<string, string[]>
   const resHeaders = mergeMultiValueParameters(resSingleHeaders, resMultiHeaders)
   const resBody = (() => {
     try {
-      return JSON.parse(res.body)
+      return typeof res.body === 'string' ? JSON.parse(res.body) : null
     } catch (e) {
       return res.body ?? null
     }
@@ -326,7 +343,7 @@ function getContentTypeFromHeaders (headers: Record<string, string | undefined> 
     : headers[contentTypeKey] as string
 }
 
-async function initialize (event: LambdaEvent, openapi: Promise<any> | any, options: Options): Promise<{ req: Request, res: Response, result: ResponseResult }> {
+async function initialize (event: LambdaEvent, context: Context, openapi: Promise<any> | any, options: Options): Promise<{ req: Request, res: Response, result: ResponseResult }> {
   if (openapi instanceof Promise) {
     try {
       openapi = await openapi
@@ -340,7 +357,7 @@ async function initialize (event: LambdaEvent, openapi: Promise<any> | any, opti
   const query: Record<string, string | string[]> = {}
   let hasQs = false
   if (event.queryStringParameters !== null) {
-    const qsParams = event.queryStringParameters
+    const qsParams = event.queryStringParameters ?? {}
     Object.keys(qsParams).forEach(key => {
       qsMap[key] = [qsParams[key] ?? '']
       query[key] = qsParams[key] ?? ''
@@ -348,7 +365,7 @@ async function initialize (event: LambdaEvent, openapi: Promise<any> | any, opti
     })
   }
   if (event.multiValueQueryStringParameters !== null) {
-    const qsParams = event.multiValueQueryStringParameters
+    const qsParams = event.multiValueQueryStringParameters ?? {}
     Object.keys(qsParams).forEach(key => {
       qsMap[key] = qsParams[key] ?? ['']
       query[key] = qsParams[key] ?? ['']
@@ -398,7 +415,7 @@ async function initialize (event: LambdaEvent, openapi: Promise<any> | any, opti
   // validate and process the request
   const requestOptions = options.allowOtherQueryParameters !== undefined ? { allowOtherQueryParameters: options.allowOtherQueryParameters } : {}
   const method = event.httpMethod.toLowerCase()
-  const headers = mergeMultiValueParameters(event.headers, event.multiValueHeaders)
+  const headers = mergeMultiValueParameters(event.headers ?? {}, event.multiValueHeaders ?? {})
   const [req, error] = openapi.request({
     method,
     path: event.path + queryString,
@@ -411,6 +428,7 @@ async function initialize (event: LambdaEvent, openapi: Promise<any> | any, opti
     req: {
       ...(req.body !== undefined ? { body: req.body } : {}), // add the body if it was included
       cookies: Object.assign({}, req.cookie ?? {}),
+      context,
       headers: Object.assign(headers, req.headers ?? {}),
       method,
       operation: req.operation,
