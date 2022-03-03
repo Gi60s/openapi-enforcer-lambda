@@ -345,9 +345,7 @@ async function initialize (event: LambdaEvent, context: Context, openapi: Promis
     })
   }
   const queryString: string = hasQs
-    ? '?' + Object.keys(qsMap)
-      .map(key => qsMap[key].map(v => encodeURIComponent(v)).join('&'))
-      .join('&')
+    ? '?' + rebuildQueryString(qsMap)
     : ''
 
   // create response result object for storing data
@@ -470,6 +468,16 @@ function mergeMultiValueParameters (singles: Record<string, string | undefined>,
     })
   }
   return merged
+}
+
+function rebuildQueryString (map: Record<string, string[]>): string {
+  const parameters: string[] = []
+  Object.keys(map).forEach(name => {
+    map[name].forEach(value => {
+      parameters.push(name + '=' + encodeURIComponent(value))
+    })
+  })
+  return parameters.join('&')
 }
 
 function sendErrorResponse (e: Error, options?: Options): LambdaResult {
